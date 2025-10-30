@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVOO Analyzer - Olive Oil Authenticity Checker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #6B8E23 0%, #556B2F 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            background: #F4E4C1;
+            color: #556B2F;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .upload-section {
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed #8B7355;
+            border-radius: 15px;
+            padding: 50px 20px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #FEFDF5;
+        }
+
+        .upload-area:hover {
+            border-color: #6B8E23;
+            background: #F9F7E8;
+        }
+
+        .upload-area.dragover {
+            border-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #8B7355;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #8B7355 0%, #6B8E23 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 115, 85, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .preview-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .preview-container.active {
+            display: block;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #DAA520 0%, #B8860B 100%);
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+        }
+
+        .result-container.active {
+            display: block;
+        }
+
+        .result-percentage {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .result-label {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .quality-indicator {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .quality-good {
+            background: #4caf50;
+        }
+
+        .quality-warning {
+            background: #ff9800;
+        }
+
+        .quality-bad {
+            background: #f44336;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #8B7355;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Forum Styles */
+        .forum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .forum-header h2 {
+            color: #333;
+        }
+
+        .post-form {
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #8B7355;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .location-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .post-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .post-item {
+            background: #FEFDF5;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #8B7355;
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .post-title {
+            font-size: 1.3rem;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .post-location {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .post-location i {
+            color: #8B7355;
+        }
+
+        .post-content {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .post-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #999;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .post-action {
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .post-action:hover {
+            color: #8B7355;
+        }
+
+        .comments-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .comment {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            color: #6B8E23;
+            margin-bottom: 5px;
+        }
+
+        .comment-text {
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        /* Map Styles */
+        #map {
+            height: 500px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .sample-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .sample-card {
+            background: #FEFDF5;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .sample-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .sample-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .sample-location {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .sample-quality {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .nav-tab {
+                min-width: 100px;
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .result-percentage {
+                font-size: 3rem;
+            }
+
+            .location-input {
+                grid-template-columns: 1fr;
+            }
+
+            #map {
+                height: 350px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .upload-area {
+                padding: 30px 15px;
+            }
+
+            .upload-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>EVOO Analyzer</h1>
+            <p>Detect Olive Oil Adulteration Using Advanced Image Analysis</p>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('analyzer')">
+                Analyzer
+            </button>
+            <button class="nav-tab" onclick="switchTab('forum')">
+                Forum
+            </button>
+            <button class="nav-tab" onclick="switchTab('map')">
+                Map
+            </button>
+        </div>
+
+        <!-- Analyzer Tab -->
+        <div id="analyzer" class="tab-content active">
+            <div class="card upload-section">
+                <h2 style="color: #333; margin-bottom: 20px;">Upload Olive Oil Sample Image</h2>
+                
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-text">Click or drag & drop to upload</div>
+                    <div class="upload-subtext">Supports: JPG, PNG (Max 10MB)</div>
+                </div>
+                
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                
+                <div class="preview-container" id="previewContainer">
+                    <h3 style="color: #333; margin-bottom: 15px;">Image Preview</h3>
+                    <img id="imagePreview" class="image-preview" alt="Preview">
+                    <div style="margin-top: 20px;">
+                        <button class="btn" onclick="analyzeImage()">
+                            Analyze Sample
+                        </button>
+                        <button class="btn" onclick="resetUpload()" style="background: #6c757d;">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <p style="color: #6B8E23; font-weight: 600;">Analyzing your sample...</p>
+                    <p style="color: #999; font-size: 0.9rem;">Processing RGB image and detecting adulteration</p>
+                </div>
+
+                <div class="result-container" id="resultContainer">
+                    <h2 class="result-label">Adulteration Level</h2>
+                    <div class="result-percentage" id="resultPercentage">0%</div>
+                    <div id="qualityIndicator" class="quality-indicator">Pure EVOO</div>
+                    <p style="margin-top: 20px; font-size: 1.1rem;">
+                        Analysis completed successfully
+                    </p>
+                    <button class="btn" onclick="shareResult()" style="margin-top: 20px;">
+                        Share to Forum
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forum Tab -->
+        <div id="forum" class="tab-content">
+            <div class="card">
+                <div class="forum-header">
+                    <h2>Community Forum</h2>
+                    <button class="btn" onclick="togglePostForm()">
+                        New Post
+                    </button>
+                </div>
+
+                <div class="post-form" id="postForm" style="display: none;">
+                    <h3 style="color: #333; margin-bottom: 20px;">Create New Post</h3>
+                    <form onsubmit="submitPost(event)">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="postTitle" placeholder="Enter post title" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Content</label>
+                            <textarea id="postContent" placeholder="Share your findings and observations..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Location (Optional)</label>
+                            <div class="location-input">
+                                <input type="text" id="postLat" placeholder="Latitude">
+                                <input type="text" id="postLng" placeholder="Longitude">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn">
+                            Post
+                        </button>
+                        <button type="button" class="btn" onclick="togglePostForm()" style="background: #6c757d;">
+                            Cancel
+                        </button>
+                    </form>
+                </div>
+
+                <div class="post-list" id="postList">
+                    <!-- Sample posts -->
+                    <div class="post-item">
+                        <div class="post-header">
+                            <div>
+                                <div class="post-title">High Adulteration Found in Magnum</div>
+                                <div class="post-location">
+                                    Astana, Kazakhstan
+                                </div>
+                            </div>
+                            <div style="color: #999; font-size: 0.9rem;">2 hours ago</div>
+                        </div>
+                        <div class="post-content">
+                            I tested several bottles from a Magnum, they are all very bad!
+                        </div>
+                        <div class="post-footer">
+                            <div class="post-actions">
+                                <span class="post-action">24</span>
+                                <span class="post-action">8</span>
+                                <span class="post-action">Share</span>
+                            </div>
+                            <div>By: User123</div>
+                        </div>
+                    </div>
+
+                    <div class="post-item">
+                        <div class="post-header">
+                            <div>
+                                <div class="post-title">Great EVOO</div>
+                                <div class="post-location">
+                                    Almaty, Kazakhstan
+                                </div>
+                            </div>
+                            <div style="color: #999; font-size: 0.9rem;">1 day ago</div>
+                        </div>
+                        <div class="post-content">
+                            Found a reliable supplier on Zeleniy Bazaer offering 100% authentic extra virgin olive oil.
+                        </div>
+                        <div class="post-footer">
+                            <div class="post-actions">
+                                <span class="post-action">56</span>
+                                <span class="post-action">15</span>
+                                <span class="post-action">Share</span>
+                            </div>
+                            <div>By: oilExpert</div>
+                        </div>
+                        <div class="comments-section">
+                            <strong style="color: #333;">Comments:</strong>
+                            <div class="comment">
+                                <div class="comment-author">NUStudent</div>
+                                <div class="comment-text">super cool</div>
+                            </div>
+                            <div class="comment">
+                                <div class="comment-author">EVOOLover</div>
+                                <div class="comment-text">cool</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="post-item">
+                        <div class="post-header">
+                            <div>
+                                <div class="post-title">Research: Oil in Astana</div>
+                                <div class="post-location">
+                                    Astana
+                                </div>
+                            </div>
+                            <div style="color: #999; font-size: 0.9rem;">3 days ago</div>
+                        </div>
+                        <div class="post-content">
+                            Analysis of 100+ samples revealed that sunflower and canola oils are the most common adulterants
+                        </div>
+                        <div class="post-footer">
+                            <div class="post-actions">
+                                <span class="post-action">89</span>
+                                <span class="post-action">23</span>
+                                <span class="post-action">Share</span>
+                            </div>
+                            <div>By: NuResearchTeam</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Tab -->
+        <div id="map-tab" class="tab-content">
+            <div class="card">
+                <h2 style="color: #333; margin-bottom: 20px;">
+                    Sampling Sites Map
+                </h2>
+                
+                <div class="map-controls">
+                    <button class="btn" onclick="filterMap('all')">
+                        All Samples
+                    </button>
+                    <button class="btn" onclick="filterMap('pure')">
+                        Pure EVOO
+                    </button>
+                    <button class="btn" onclick="filterMap('adulterated')">
+                        Adulterated
+                    </button>
+                </div>
+
+                <div id="map"></div>
+
+                <div class="sample-list" id="sampleList">
+                    <div class="sample-card" onclick="focusMapLocation(51.1694, 71.4491)">
+                        <div class="sample-title">Seven Sample</div>
+                        <div class="sample-location">
+                            Astana, KZ
+                        </div>
+                        <span class="sample-quality quality-bad">45% Adulterated</span>
+                    </div>
+
+                    <div class="sample-card" onclick="focusMapLocation(43.2220, 76.8512)">
+                        <div class="sample-title">Aul Sample</div>
+                        <div class="sample-location">
+                            Almaty, KZ
+                        </div>
+                        <span class="sample-quality quality-good">2% Adulterated</span>
+                    </div>
+
+                    <div class="sample-card" onclick="focusMapLocation(51.1802, 71.4460)">
+                        <div class="sample-title">Galmart Sample</div>
+                        <div class="sample-location">
+                            Astana, KZ
+                        </div>
+                        <span class="sample-quality quality-warning">28% Adulterated</span>
+                    </div>
+
+                    <div class="sample-card" onclick="focusMapLocation(43.2380, 76.9450)">
+                        <div class="sample-title">Bazar Sample</div>
+                        <div class="sample-location">
+                            Almaty Region, KZ
+                        </div>
+                        <span class="sample-quality quality-good">5% Adulterated</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let currentFile = null;
+        let map = null;
+        let markers = [];
+
+        // tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName === 'map' ? 'map-tab' : tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'map' && !map) {
+                initMap();
+            }
+        }
+
+		// uploading file
+        const uploadArea = document.getElementById('uploadArea');
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB');
+                return;
+            }
+
+            currentFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('previewContainer').classList.add('active');
+                document.getElementById('resultContainer').classList.remove('active');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetUpload() {
+            currentFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('previewContainer').classList.remove('active');
+            document.getElementById('resultContainer').classList.remove('active');
+        }
+
+        function analyzeImage() {
+            if (!currentFile) {
+                alert('Please upload an image first');
+                return;
+            }
+
+            document.getElementById('loadingIndicator').classList.add('active');
+            document.getElementById('resultContainer').classList.remove('active');
+
+            // random result
+            setTimeout(() => {
+                const randomAdulteration = Math.floor(Math.random() * 60);
+                displayResult(randomAdulteration);
+                document.getElementById('loadingIndicator').classList.remove('active');
+            }, 3000);
+        }
+
+        function displayResult(percentage) {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultPercentage = document.getElementById('resultPercentage');
+            const qualityIndicator = document.getElementById('qualityIndicator');
+
+            resultPercentage.textContent = percentage + '%';
+            
+            let qualityClass = 'quality-good';
+            let qualityText = 'Pure EVOO';
+            
+            if (percentage > 30) {
+                qualityClass = 'quality-bad';
+                qualityText = 'Highly Adulterated';
+            } else if (percentage > 10) {
+                qualityClass = 'quality-warning';
+                qualityText = 'Moderately Adulterated';
+            }
+
+            qualityIndicator.className = 'quality-indicator ' + qualityClass;
+            qualityIndicator.textContent = qualityText;
+            
+            resultContainer.classList.add('active');
+        }
+
+        function shareResult() {
+            switchTab('forum');
+            togglePostForm();
+            alert('Result ready to share! Fill in the forum post details.');
+        }
+
+        // forum fs
+        function togglePostForm() {
+            const form = document.getElementById('postForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function submitPost(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('postTitle').value;
+            const content = document.getElementById('postContent').value;
+            const lat = document.getElementById('postLat').value;
+            const lng = document.getElementById('postLng').value;
+
+            const location = (lat && lng) ? 
+                `Lat: ${lat}, Lng: ${lng}` : 
+                'Location not specified';
+
+            const postHTML = `
+                <div class="post-item">
+                    <div class="post-header">
+                        <div>
+                            <div class="post-title">${title}</div>
+                            <div class="post-location">
+                                ${location}
+                            </div>
+                        </div>
+                        <div style="color: #999; font-size: 0.9rem;">Just now</div>
+                    </div>
+                    <div class="post-content">${content}</div>
+                    <div class="post-footer">
+                        <div class="post-actions">
+                            <span class="post-action">0</span>
+                            <span class="post-action">0</span>
+                            <span class="post-action">Share</span>
+                        </div>
+                        <div>By: You</div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('postList').insertAdjacentHTML('afterbegin', postHTML);
+            
+            event.target.reset();
+            togglePostForm();
+            
+            alert('Post created successfully!');
+        }
+
+        // Map functions
+        function initMap() {
+            map = L.map('map').setView([51.1694, 71.4491], 6);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Sample locations
+            const samples = [
+                { lat: 51.1694, lng: 71.4491, title: 'Seven', quality: 'bad', percentage: 45 },
+                { lat: 43.2220, lng: 76.8512, title: 'Aul', quality: 'good', percentage: 2 },
+                { lat: 51.1802, lng: 71.4460, title: 'Galmart', quality: 'warning', percentage: 28 },
+                { lat: 43.2380, lng: 76.9450, title: 'Bazar', quality: 'good', percentage: 5 }
+            ];
+
+            samples.forEach(sample => {
+                const markerColor = sample.quality === 'good' ? 'green' : 
+                                   sample.quality === 'warning' ? 'orange' : 'red';
+                
+                const marker = L.marker([sample.lat, sample.lng])
+                    .addTo(map)
+                    .bindPopup(`
+                        <strong>${sample.title}</strong><br>
+                        Adulteration: ${sample.percentage}%<br>
+                        Status: ${sample.quality}
+                    `);
+                
+                markers.push({ marker, quality: sample.quality });
+            });
+        }
+
+        function focusMapLocation(lat, lng) {
+            switchTab('map');
+            setTimeout(() => {
+                if (map) {
+                    map.setView([lat, lng], 13);
+                }
+            }, 100);
+        }
+
+        function filterMap(filter) {
+            if (!map) return;
+            
+            markers.forEach(({marker, quality}) => {
+                if (filter === 'all') {
+                    marker.addTo(map);
+                } else if (filter === 'pure' && quality === 'good') {
+                    marker.addTo(map);
+                } else if (filter === 'adulterated' && quality !== 'good') {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
