@@ -516,26 +516,64 @@
         <!-- Analyzer Tab -->
         <div id="analyzer" class="tab-content active">
             <div class="card upload-section">
-                <h2 style="color: #333; margin-bottom: 20px;">Upload Olive Oil Sample Image</h2>
+                <h2 style="color: #333; margin-bottom: 20px;">Upload Olive Oil Sample Images</h2>
                 
-                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-                    <div class="upload-text">Click or drag & drop to upload</div>
-                    <div class="upload-subtext">Supports: JPG, PNG (Max 10MB)</div>
+                <div style="background: #FFF3CD; border: 2px solid #FFE69C; border-radius: 8px; padding: 15px; margin-bottom: 20px; color: #856404;">
+                    <strong>📸 Required Images:</strong> Please upload all three images for accurate analysis
                 </div>
-                
-                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
-                
-                <div class="preview-container" id="previewContainer">
-                    <h3 style="color: #333; margin-bottom: 15px;">Image Preview</h3>
-                    <img id="imagePreview" class="image-preview" alt="Preview">
-                    <div style="margin-top: 20px;">
-                        <button class="btn" onclick="analyzeImage()">
-                            Analyze Sample
-                        </button>
-                        <button class="btn" onclick="resetUpload()" style="background: #6c757d;">
-                            Clear
-                        </button>
+
+                <!-- Oil Sample Upload -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #555; margin-bottom: 10px; font-size: 1.1rem;">1. Oil Sample Image</h3>
+                    <div class="upload-area" id="uploadArea1" onclick="document.getElementById('fileInput1').click()">
+                        <div class="upload-text">Click or drag & drop oil sample</div>
+                        <div class="upload-subtext">Photo of the oil itself</div>
                     </div>
+                    <input type="file" id="fileInput1" accept="image/*" onchange="handleFileSelect(event, 1)">
+                    <div class="preview-container" id="previewContainer1">
+                        <img id="imagePreview1" class="image-preview" alt="Oil Sample">
+                        <p style="color: #4caf50; margin-top: 10px; font-weight: 600;">✓ Oil sample uploaded</p>
+                    </div>
+                </div>
+
+                <!-- Front Label Upload -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #555; margin-bottom: 10px; font-size: 1.1rem;">2. Front Label</h3>
+                    <div class="upload-area" id="uploadArea2" onclick="document.getElementById('fileInput2').click()">
+                        <div class="upload-text">Click or drag & drop front label</div>
+                        <div class="upload-subtext">Clear photo of bottle front</div>
+                    </div>
+                    <input type="file" id="fileInput2" accept="image/*" onchange="handleFileSelect(event, 2)">
+                    <div class="preview-container" id="previewContainer2">
+                        <img id="imagePreview2" class="image-preview" alt="Front Label">
+                        <p style="color: #4caf50; margin-top: 10px; font-weight: 600;">✓ Front label uploaded</p>
+                    </div>
+                </div>
+
+                <!-- Back Label Upload -->
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #555; margin-bottom: 10px; font-size: 1.1rem;">3. Back Label</h3>
+                    <div class="upload-area" id="uploadArea3" onclick="document.getElementById('fileInput3').click()">
+                        <div class="upload-text">Click or drag & drop back label</div>
+                        <div class="upload-subtext">Clear photo of bottle back</div>
+                    </div>
+                    <input type="file" id="fileInput3" accept="image/*" onchange="handleFileSelect(event, 3)">
+                    <div class="preview-container" id="previewContainer3">
+                        <img id="imagePreview3" class="image-preview" alt="Back Label">
+                        <p style="color: #4caf50; margin-top: 10px; font-weight: 600;">✓ Back label uploaded</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn" onclick="analyzeImage()" id="analyzeBtn" disabled>
+                        Analyze Samples
+                    </button>
+                    <button class="btn" onclick="resetUpload()" style="background: #6c757d;">
+                        Clear All
+                    </button>
+                    <p id="uploadStatus" style="margin-top: 10px; color: #666; font-size: 0.9rem;">
+                        Please upload all 3 images to continue
+                    </p>
                 </div>
 
                 <div class="loading" id="loadingIndicator">
@@ -740,7 +778,11 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let currentFile = null;
+        let uploadedFiles = {
+            1: null,  // Oil sample
+            2: null,  // Front label
+            3: null   // Back label
+        };
         let map = null;
         let markers = [];
 
@@ -761,35 +803,42 @@
             }
         }
 
-		// uploading file
-        const uploadArea = document.getElementById('uploadArea');
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
+		// uploading file - setup drag & drop for all three areas
+        function setupDragDrop(areaId, imageNum) {
+            const uploadArea = document.getElementById(areaId);
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
 
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0], imageNum);
+                }
+            });
+        }
 
-        function handleFileSelect(event) {
+        // Setup drag and drop for all three upload areas
+        setupDragDrop('uploadArea1', 1);
+        setupDragDrop('uploadArea2', 2);
+        setupDragDrop('uploadArea3', 3);
+
+        function handleFileSelect(event, imageNum) {
             const file = event.target.files[0];
             if (file) {
-                handleFile(file);
+                handleFile(file, imageNum);
             }
         }
 
-        function handleFile(file) {
+        function handleFile(file, imageNum) {
             if (!file.type.startsWith('image/')) {
                 alert('Please upload an image file');
                 return;
@@ -800,33 +849,58 @@
                 return;
             }
 
-            currentFile = file;
+            uploadedFiles[imageNum] = file;
             const reader = new FileReader();
             reader.onload = (e) => {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('previewContainer').classList.add('active');
-                document.getElementById('resultContainer').classList.remove('active');
+                document.getElementById('imagePreview' + imageNum).src = e.target.result;
+                document.getElementById('previewContainer' + imageNum).classList.add('active');
+                checkAllUploaded();
             };
             reader.readAsDataURL(file);
         }
 
+        function checkAllUploaded() {
+            const allUploaded = uploadedFiles[1] && uploadedFiles[2] && uploadedFiles[3];
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const statusText = document.getElementById('uploadStatus');
+            
+            if (allUploaded) {
+                analyzeBtn.disabled = false;
+                statusText.textContent = '✓ All images uploaded - Ready to analyze!';
+                statusText.style.color = '#4caf50';
+                statusText.style.fontWeight = '600';
+                document.getElementById('resultContainer').classList.remove('active');
+            } else {
+                analyzeBtn.disabled = true;
+                const uploadedCount = Object.values(uploadedFiles).filter(f => f !== null).length;
+                statusText.textContent = `Uploaded ${uploadedCount}/3 images - Please upload all images`;
+                statusText.style.color = '#666';
+                statusText.style.fontWeight = 'normal';
+            }
+        }
+
         function resetUpload() {
-            currentFile = null;
-            document.getElementById('fileInput').value = '';
-            document.getElementById('previewContainer').classList.remove('active');
+            uploadedFiles = { 1: null, 2: null, 3: null };
+            document.getElementById('fileInput1').value = '';
+            document.getElementById('fileInput2').value = '';
+            document.getElementById('fileInput3').value = '';
+            document.getElementById('previewContainer1').classList.remove('active');
+            document.getElementById('previewContainer2').classList.remove('active');
+            document.getElementById('previewContainer3').classList.remove('active');
             document.getElementById('resultContainer').classList.remove('active');
+            checkAllUploaded();
         }
 
         function analyzeImage() {
-            if (!currentFile) {
-                alert('Please upload an image first');
+            if (!uploadedFiles[1] || !uploadedFiles[2] || !uploadedFiles[3]) {
+                alert('Please upload all three images first');
                 return;
             }
 
             document.getElementById('loadingIndicator').classList.add('active');
             document.getElementById('resultContainer').classList.remove('active');
 
-            // random result
+            // random result - in real implementation, send all three files to backend
             setTimeout(() => {
                 const randomAdulteration = Math.floor(Math.random() * 60);
                 displayResult(randomAdulteration);
